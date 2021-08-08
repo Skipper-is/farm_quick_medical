@@ -48,6 +48,7 @@ $form['quick_medical']['asset'] = array(
     '#type' => 'text_format',
     '#title' => t("Notes"),
     '#format' => 'farm_format',
+    '#required' => TRUE,
 
   );
 
@@ -150,38 +151,39 @@ $form['quick_medical']['asset'] = array(
 }
 
 function farm_quick_medical_form_validate($form, &$form_state){
-	if (!empty($form_state['values']['asset'])){
-		$id = 0;
-		$matches = array();
-		$result = preg_match('/\\[id: ([0-9]+)\\]/', $form_state['values']['asset'], $matches);
-		if (!empty($matches[$result])){
-			$id=$matches[$result];
-		}
-	if (empty($id)) {
-      form_set_error('asset', t('Could not load the animal/group record. Make sure the asset ID is included. For example: "My animal [id: 123]"'));
+  $assets = array();
+    $asset_names = drupal_explode_tags($form_state['values']['asset']);
+    foreach($asset_names as $asset_name){
+      $id = 0;
+      $matches = array();
+      $result =preg_match('/\\[id: ([0-9]+)\\]/', $asset_name, $matches);
+      if(!empty($matches[$result])){
+        $id = $matches[$result];
+      }
+      if(empty($id)){
+        form_set_error('quick_medical] [asset',t('Could not load the asset. Make sure the asset ID is included. For example "Goat [id:123]"'));
+
+      }
+      $asset = farm_asset_load($id);
+      if(!empty($asset)){
+        $assets[$id] = $asset;
+      }
+      if(empty($asset)){
+        form_set_error('quick_medical] [asset', t('Could not load the equipment. Make sure the asset name and ID are correct.'));
+      }
     }
+    $form_state['storage']['assets'] = $assets;
 
-    // Load the asset.
-    $asset = farm_asset_load($id);
-
-    // If the asset didn't load, throw an error.
-    if (empty($asset)) {
-      form_set_error('asset', t('Could not load the animal/group record. Make sure the asset name and ID are correct.'));
-    }
-
-    // Save the asset to the form state.
-    $form_state['storage']['asset'] = $asset;
-  };
 
   if (!empty($form_state['values']['medicine'])){
     print_r("Not empty");
     print_r(empty($form_state['values']['quantity']));
 
     if(empty($form_state['values']['quantity'])){
-      form_set_error('quantity', t('If medication is given, must enter quantity'));
+      form_set_error('quick_medical] [medicines] [quantity', t('If medication is given, must enter quantity'));
     }
     if (empty($form_state['values']['units'])){
-      form_set_error('units', t('If medication is given, must enter units'));
+      form_set_error('quick_medical] [medicines] [units', t('If medication is given, must enter units'));
     }
 
 
@@ -193,9 +195,9 @@ function farm_quick_medical_form_submit($form, &$form_state){
   $log_type = "farm_medical";
   $log_name = $form_state['values']['title'];
   $timestamp = strtotime($form_state['values']['timestamp']);
-  $asset = $form_state['storage']['asset'];
-  $assets = array($asset);
-  $notes = $form_state['values']['description'];
+  $assets = $form_state['storage']['assets'];
+
+  $notes = $form_state['values']['description']['value'];
   $vet = $form_state['values']['field_farm_vet'];
   $medicine = $form_state['values']['medicine'];
   $measure = $form_state['values']['measure'];
@@ -216,7 +218,7 @@ function farm_quick_medical_form_submit($form, &$form_state){
   $done = $form_state['values']['done'];
   $log = NULL;
   if (empty($medicine)){
-    $log = farm_log_create('farm_medical', $log_name, $timestamp, $done, $assets, $notes,$categories= array('Animals'));
+    $log = farm_log_create('farm_medical', $log_name, $timestamp, $done, $assets, $notes ,$categories= array('Animals'));
   }
   else{
     $notes = $notes . t("Medication name: ") . $medicine . "\r\n";
