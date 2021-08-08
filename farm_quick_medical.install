@@ -1,0 +1,39 @@
+<?php
+
+function farm_quick_medical_install(){
+  $taxonomy = (object) array(
+    'name'=> t('Medicine Names'),
+    'description' => t('Vocabulary to hold medicine names'),
+    'machine_name' => 'quick_medical',
+  );
+  taxonomy_vocabulary_save($taxonomy);
+
+  $vocab = taxonomy_vocabulary_machine_name_load('quick_medical');
+  $term1 = (object) array(
+    'name'=> ' Diatomaceous Earth (DE)',
+    'description'=> 'Diatomaceous Earth',
+    'vid' => $vocab->vid,
+  );
+  taxonomy_term_save($term1);
+}
+
+function farm_quick_medical_update_7000(&$sandbox){
+  $module = "farm_quick";
+  if (!module_exists($module)){
+    module_enable(array($module));
+  }
+}
+
+function farm_quick_medical_update_7001(&$sandbox){
+  $enabled_quick_forms = variable_get('farm_quick_forms_enabled',array());
+
+  if(empty($enabled_quick_forms['quick_medical'])){
+    $enabled_quick_forms['quick_medical'] = 'quick_medical';
+    variable_set('farm_quick_forms_enabled',$enabled_quick_forms);
+  }
+}
+
+function farm_quick_medical_uninstall(){
+  $vocab = taxonomy_vocabulary_machine_name_load('quick_medical');
+  taxonomy_vocabulary_delete($vocab->vid);
+}
